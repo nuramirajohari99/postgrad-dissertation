@@ -1,0 +1,466 @@
+---
+title: "Predicting Yellow and Red Cards"
+author: "Nur Amira binti Johari"
+output: 
+  pdf_document:
+    latex_engine: pdflatex
+params:
+  data: "Data (variables to use).xlsx"
+---
+  
+```{r setup, echo=FALSE, warning=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(knitr)
+library(kableExtra)
+library(randomForest)
+library(MASS)
+
+#import data
+dataset <- read_excel(params$data)
+dataset <- subset(dataset, select = -c(season, team1_name, team2_name))
+
+# see details of dataset
+glimpse(dataset)
+
+# Check for duplicates
+anyDuplicated(dataset)
+
+unique(dataset$country)
+unique(dataset$referee)
+
+# Check missing values for numeric columns
+colSums(is.na(dataset[sapply(dataset, is.numeric)]))
+
+# Check missing values for character variables with "NA" as missing value marker
+apply(dataset, 2, function(col) sum(col == "NA", na.rm = TRUE))
+
+# Convert the kick_off_datetime variable to a POSIXct object 
+dataset$kick_off_datetime <- ymd_hms(dataset$kick_off_datetime)
+
+# Extract the date component
+dataset$kick_off_date <- as.Date(dataset$kick_off_datetime)
+
+# Remove the kick_off_datetime column
+dataset <- subset(dataset, select = -c(kick_off_datetime))
+
+# analyse data with NA
+dataNA <- read_excel("Data (variables to use) - NA.xlsx")
+
+# Count the number of missing values for each country in the "dataNA" dataset
+missing_by_country <- table(dataNA$country)
+
+# Display the result
+print(missing_by_country)
+plot(missing_by_country)
+
+# Calculate the mode for 'referee' for each country
+mode_referee_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(mode_referee = names(sort(table(referee), decreasing = TRUE))[1])
+print(mode_referee_by_country)
+
+# Merge the mode_referee_by_country back to the original data
+dataset <- left_join(dataset, mode_referee_by_country, by = "country")
+
+# Replace missing 'referee' values (represented as "NA") with the mode for each respective country
+dataset$referee[dataset$referee == "NA"] <- dataset$mode_referee[dataset$referee == "NA"]
+
+# Calculate the second mode for 'referee' for the country where the mode is NA ("Germany")
+second_mode_referee <- dataset %>%
+  filter(country == "Germany" & referee != "NA") %>%
+  count(referee) %>%
+  arrange(desc(n)) %>%
+  slice(2) %>%
+  pull(referee)
+print(second_mode_referee)
+
+# Replace missing 'referee' values (represented as "NA") with the second mode for the country where the mode is NA ("Germany")
+dataset$referee[dataset$country == "Germany" & dataset$referee == "NA"] <- second_mode_referee
+
+# Remove the temporary 'mode_referee' column
+dataset$mode_referee <- NULL
+
+# Check the number of missing values for 'sup_implied' and 'tg_implied'
+sum(is.na(dataset$sup_implied))
+sum(is.na(dataset$tg_implied))
+
+summary(dataset$sup_implied)
+hist(dataset$sup_implied)
+
+summary(dataset$tg_implied)
+hist(dataset$tg_implied)
+
+# Calculate the mean of 'sup_implied' and 'tg_implied'
+mean_sup_implied <- mean(dataset$sup_implied, na.rm = TRUE)
+mean_tg_implied <- mean(dataset$tg_implied, na.rm = TRUE)
+
+# Impute missing 'sup_implied' and 'tg_implied' values with the mean
+dataset$sup_implied[is.na(dataset$sup_implied)] <- mean_sup_implied
+dataset$tg_implied[is.na(dataset$tg_implied)] <- mean_tg_implied
+
+# Combine team1 and team2, yc and rc
+dataset$total_yc <- dataset$team1_yc + dataset$team2_yc
+dataset$total_rc <- dataset$team1_rc + dataset$team2_rc
+
+# Remove columns
+dataset <- subset(dataset, select = -c(team1_yc, team1_rc, team2_yc, team2_rc))
+
+# Summary statistic of distribution of referees
+referee_summary <- dataset %>%
+  group_by(referee) %>%
+  summarise(matches = n()) %>%
+  summarise(mean_matches = mean(matches),
+            median_matches = median(matches),
+            sd_matches = sd(matches),
+            min_matches = min(matches),
+            max_matches = max(matches))
+
+# Calculate referee match counts
+referee_counts <- dataset %>%
+  group_by(referee) %>%
+  summarise(matches = n())
+
+# Plotting the histogram
+ggplot(referee_counts, aes(x = matches)) +
+  geom_histogram(binwidth = 20, fill = "dodgerblue", color = "black") +
+  labs(title = "Distribution of Matches per Referee",
+       x = "Number of Matches",
+       y = "Frequency")
+
+# Calculate quartiles
+quartiles <- quantile(referee_counts$matches, probs = c(0.25, 0.50, 0.75))
+
+# Print quartiles
+print(quartiles)
+
+library(dplyr)
+
+referee_counts <- referee_counts %>%
+  mutate(referee_group = case_when(
+    matches < 18 ~ "Novice",
+    matches >= 18 & matches <= 54 ~ "Experienced",
+    matches >= 55 & matches <= 120 ~ "Veteran",
+    matches > 120 ~ "Elite",
+    TRUE ~ NA_character_
+  ))
+
+# Merge with original data
+dataset <- left_join(dataset, referee_counts, by = "referee")
+
+# Remove columns
+dataset <- subset(dataset, select = -c(referee))
+
+# Group time into afternoon and evening
+dataset$kick_off_timecat <- ifelse(dataset$kick_off_timecat == 1, "Afternoon", "Evening")
+
+dataset$competition_level <- ifelse(dataset$competition_level == 1, "L1", "L2")
+
+dataset$kick_off_date <- as.Date(dataset$kick_off_date)
+
+dataset$kick_off_year <- format(dataset$kick_off_date, "%Y")
+dataset$kick_off_month <- format(dataset$kick_off_date, "%m")
+
+attendance_by_month_year <- dataset %>%
+  group_by(kick_off_year, kick_off_month) %>%
+  summarise(total_attendance = sum(attendance_value))
+
+ggplot(attendance_by_month_year, aes(x = kick_off_month, y = total_attendance, fill = kick_off_year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "",
+       x = "Month",
+       y = "Total Attendance",
+       fill = "Year") +
+  theme_minimal()
+
+dataset$kick_off_date <- as.Date(dataset$kick_off_date)
+dataset$period <- ifelse(dataset$kick_off_date <= as.Date("2020-03-31"), "Period 1", "Period 2")
+
+period1_data <- dataset %>%
+  filter(kick_off_date <= as.Date("2020-03-31"))
+
+library(caret)
+
+set.seed(123)  # For reproducibility
+train_indices <- createDataPartition(period1_data$attendance_value, p = 0.7, list = FALSE)
+training_data <- period1_data[train_indices, ]
+validation_data <- period1_data[-train_indices, ]
+
+period2_data <- dataset %>%
+  filter(kick_off_date > as.Date("2020-03-31"))
+
+dataset_yc <- subset(dataset, select = -c(total_rc,kick_off_date, kick_off_year,kick_off_month,period))
+dataset_rc <- subset(dataset, select = -c(total_yc,kick_off_date, kick_off_year,kick_off_month,period))
+
+training_data <- subset(training_data, select = -c(kick_off_date,kick_off_month,kick_off_year,period))
+validation_data <- subset(validation_data, select = -c(kick_off_date,kick_off_month,kick_off_year,period))
+period2_data <- subset(period2_data, select = -c(kick_off_date,kick_off_month,kick_off_year,period))
+
+trainingyc_data <- subset(training_data, select = -c(total_rc))
+trainingrc_data <- subset(training_data, select = -c(total_yc))
+
+validationyc_data <- subset(validation_data, select = -c(total_rc))
+validationrc_data <- subset(validation_data, select = -c(total_yc))
+
+period2yc_data <- subset(period2_data, select = -c(total_rc))
+period2rc_data <- subset(period2_data, select = -c(total_yc))
+
+### YELLOW CARDS
+
+
+
+
+
+
+library(MASS)  
+
+## Poisson model
+
+
+ptyc <- glm(total_yc ~ .,data=trainingyc_data,family="poisson")
+# Perform stepwise variable selection using AIC (forward and backward)
+stepwise_model_ptyc <- step(ptyc, direction = "both", trace = 0)
+# Print the summary of the final selected model
+summary(stepwise_model_ptyc)
+summary(ptyc)
+AIC(stepwise_model_ptyc)
+AIC(ptyc)
+stepwise_model_bic <- stepAIC(ptyc, direction = "both", trace = 0, k = log(nrow(trainingyc_data)))
+
+# Print the summary of the final selected model
+summary(stepwise_model_bic)
+bic_selected_model <- BIC(stepwise_model_bic)
+
+predictions_aic <- predict(stepwise_model_ptyc, newdata = validationyc_data, type = "response")
+predictions_bic <- predict(stepwise_model_bic, newdata = validationyc_data, type = "response")
+
+rmse_aic <- sqrt(mean((validationyc_data$total_yc - predictions_aic)^2))
+rmse_bic <- sqrt(mean((validationyc_data$total_yc - predictions_bic)^2))
+# Calculate MAPE for both models
+mape_aic <- mean(abs((validationyc_data$total_yc - predictions_aic) / validationyc_data$total_yc)) * 100
+mape_bic <- mean(abs((validationyc_data$total_yc - predictions_bic) / validationyc_data$total_yc)) * 100
+
+# Calculate MAE for both models
+mae_aic <- mean(abs(validationyc_data$total_yc - predictions_aic))
+mae_bic <- mean(abs(validationyc_data$total_yc - predictions_bic))
+
+print(paste("RMSE for AIC-based model:", rmse_aic))
+print(paste("RMSE for BIC-based model:", rmse_bic))
+
+print(paste("MAE for AIC-based model:", mae_aic))
+print(paste("MAE for BIC-based model:", mae_bic))
+
+
+## Negative Binomial Regression
+
+nbtyc_model <- glm.nb(total_yc ~ ., data = trainingyc_data)
+summary(nbtyc_model)
+
+
+nbtyc_model <- glm.nb(total_yc ~ .,data=trainingyc_data)
+# Perform stepwise variable selection using AIC (forward and backward)
+stepwise_nbtyc_model <- step(nbtyc_model, direction = "both", trace = 0)
+# Print the summary of the final selected model
+summary(stepwise_nbtyc_model)
+summary(nbtyc_model)
+AIC(stepwise_nbtyc_model)
+AIC(nbtyc_model)
+
+stepwise_nbtyc_model_bic <- stepAIC(nbtyc_model, direction = "both", trace = 0, k = log(nrow(trainingyc_data)))
+# Print the summary of the final selected model
+summary(stepwise_nbtyc_model_bic)
+bic_selected_nbtyc_model <- BIC(stepwise_nbtyc_model_bic)
+
+predictions_aic_nbtyc_model <- predict(stepwise_nbtyc_model, newdata = validationyc_data, type = "response")
+predictions_bic_nbtyc_model <- predict(stepwise_nbtyc_model_bic, newdata = validationyc_data, type = "response")
+
+rmse_nbtyc_model_aic <- sqrt(mean((validationyc_data$total_yc - predictions_aic)^2))
+rmse_nbtyc_model_bic <- sqrt(mean((validationyc_data$total_yc - predictions_bic)^2))
+# Calculate MAPE for both models
+mape_aic_nbtyc_model <- mean(abs((validationyc_data$total_yc - predictions_aic_nbtyc_model) / validationyc_data$total_yc)) * 100
+mape_bic_nbtyc_model <- mean(abs((validationyc_data$total_yc - predictions_bic_nbtyc_model) / validationyc_data$total_yc)) * 100
+
+# Calculate MAE for both models
+mae_aic_nbtyc_model <- mean(abs(validationyc_data$total_yc - predictions_aic_nbtyc_model))
+mae_bic_nbtyc_model <- mean(abs(validationyc_data$total_yc - predictions_bic_nbtyc_model))
+
+print(paste("RMSE for AIC-based model:", rmse_nbtyc_model_aic))
+print(paste("RMSE for BIC-based model:", rmse_nbtyc_model_bic))
+# Compare MAPE and MAE values
+print(paste("MAPE for AIC-based model:", mape_aic_nbtyc_model, "%"))
+print(paste("MAPE for p-value-based model:", mape_bic_nbtyc_model, "%"))
+
+print(paste("MAE for AIC-based model:", mae_aic_nbtyc_model))
+print(paste("MAE for p-value-based model:", mae_bic_nbtyc_model))
+
+
+
+
+
+
+#RED CARDSSSSSS
+
+## Poisson model
+
+
+ptrc <- glm(total_rc ~ .,data=trainingrc_data,family="poisson")
+# Perform stepwise variable selection using AIC (forward and backward)
+stepwise_model_ptrc <- step(ptrc, direction = "both", trace = 0)
+# Print the summary of the final selected model
+summary(stepwise_model_ptrc)
+summary(ptrc)
+AIC(stepwise_model_ptrc)
+AIC(ptrc)
+stepwise_model_bic <- stepAIC(ptrc, direction = "both", trace = 0, k = log(nrow(trainingrc_data)))
+
+# Print the summary of the final selected model
+summary(stepwise_model_bic)
+bic_selected_model <- BIC(stepwise_model_bic)
+
+predictions_aic <- predict(stepwise_model_ptrc, newdata = validationrc_data, type = "response")
+predictions_bic <- predict(stepwise_model_bic, newdata = validationrc_data, type = "response")
+
+rmse_aic <- sqrt(mean((validationrc_data$total_rc - predictions_aic)^2))
+rmse_bic <- sqrt(mean((validationrc_data$total_rc - predictions_bic)^2))
+# Calculate MAPE for both models
+mape_aic <- mean(abs((validationrc_data$total_rc - predictions_aic) / validationrc_data$total_rc)) * 100
+mape_bic <- mean(abs((validationrc_data$total_rc - predictions_bic) / validationrc_data$total_rc)) * 100
+
+# Calculate MAE for both models
+mae_aic <- mean(abs(validationrc_data$total_rc - predictions_aic))
+mae_bic <- mean(abs(validationrc_data$total_rc - predictions_bic))
+
+print(paste("RMSE for AIC-based model:", rmse_aic))
+print(paste("RMSE for BIC-based model:", rmse_bic))
+# Compare MAPE and MAE values
+print(paste("MAPE for AIC-based model:", mape_aic, "%"))
+print(paste("MAPE for p-value-based model:", mape_bic, "%"))
+
+print(paste("MAE for AIC-based model:", mae_aic))
+print(paste("MAE for p-value-based model:", mae_bic))
+
+
+## Negative Binomial Regression
+
+nbtrc_model <- glm.nb(total_rc ~ ., data = trainingrc_data)
+summary(nbtrc_model)
+
+# Perform stepwise variable selection using AIC (forward and backward)
+stepwise_nbtrc_model <- step(nbtrc_model, direction = "both", trace = 0)
+# Print the summary of the final selected model
+summary(stepwise_nbtrc_model)
+summary(nbtrc_model)
+AIC(stepwise_nbtyc_model)
+AIC(nbtyc_model)
+
+stepwise_nbtrc_model_bic <- stepAIC(nbtrc_model, direction = "both", trace = 0, k = log(nrow(trainingrc_data)))
+# Print the summary of the final selected model
+summary(stepwise_nbtrc_model_bic)
+bic_selected_nbtyc_model <- BIC(stepwise_nbtyc_model_bic)
+
+predictions_aic_nbtrc_model <- predict(stepwise_nbtrc_model, newdata = validationrc_data, type = "response")
+predictions_bic_nbtrc_model <- predict(stepwise_nbtrc_model_bic, newdata = validationrc_data, type = "response")
+
+rmse_nbtrc_model_aic <- sqrt(mean((validationrc_data$total_rc - predictions_aic)^2))
+rmse_nbtrc_model_bic <- sqrt(mean((validationrc_data$total_rc - predictions_bic)^2))
+# Calculate MAPE for both models
+mape_aic_nbtrc_model <- mean(abs((validationrc_data$total_rc - predictions_aic_nbtrc_model) / validationrc_data$total_rc)) * 100
+mape_bic_nbtrc_model <- mean(abs((validationrc_data$total_rc - predictions_bic_nbtrc_model) / validationrc_data$total_rc)) * 100
+
+# Calculate MAE for both models
+mae_aic_nbtrc_model <- mean(abs(validationrc_data$total_rc - predictions_aic))
+mae_bic_nbtrc_model <- mean(abs(validationrc_data$total_rc - predictions_bic))
+
+print(paste("RMSE for AIC-based model:", rmse_nbtrc_model_aic))
+print(paste("RMSE for BIC-based model:", rmse_nbtrc_model_bic))
+# Compare MAPE and MAE values
+print(paste("MAPE for AIC-based model:", mape_aic_nbtrc_model, "%"))
+print(paste("MAPE for p-value-based model:", mape_bic_nbtrc_model, "%"))
+
+print(paste("MAE for AIC-based model:", mae_aic_nbtrc_model))
+print(paste("MAE for p-value-based model:", mae_bic_nbtrc_model))
+
+
+
+
+
+#### COVID DATAAA
+
+# Yellow Cards
+## Poisson model
+
+predictions_aic <- predict(stepwise_model_ptyc, newdata = period2yc_data, type = "response")
+predictions_bic <- predict(stepwise_model_bic, newdata = period2yc_data, type = "response")
+
+rmse_aic <- sqrt(mean((period2yc_data$total_yc - predictions_aic)^2))
+rmse_bic <- sqrt(mean((period2yc_data$total_yc - predictions_bic)^2))
+
+# Calculate MAE for both models
+mae_aic <- mean(abs(period2yc_data$total_yc - predictions_aic))
+mae_bic <- mean(abs(period2yc_data$total_yc - predictions_bic))
+
+print(paste("RMSE for AIC-based model:", rmse_aic))
+print(paste("RMSE for BIC-based model:", rmse_bic))
+
+print(paste("MAE for AIC-based model:", mae_aic))
+print(paste("MAE for BIC-based model:", mae_bic))
+
+#Negative Binomial Regression
+
+predictions_aic_nbtyc_model <- predict(stepwise_nbtyc_model, newdata = period2yc_data, type = "response")
+predictions_bic_nbtyc_model <- predict(stepwise_nbtyc_model_bic, newdata = period2yc_data, type = "response")
+
+rmse_nbtyc_model_aic <- sqrt(mean((period2yc_data$total_yc - predictions_aic)^2))
+rmse_nbtyc_model_bic <- sqrt(mean((period2yc_data$total_yc - predictions_bic)^2))
+
+# Calculate MAE for both models
+mae_aic_nbtyc_model <- mean(abs(period2yc_data$total_yc - predictions_aic_nbtyc_model))
+mae_bic_nbtyc_model <- mean(abs(period2yc_data$total_yc - predictions_bic_nbtyc_model))
+
+print(paste("RMSE for AIC-based model:", rmse_nbtyc_model_aic))
+print(paste("RMSE for BIC-based model:", rmse_nbtyc_model_bic))
+
+print(paste("MAE for AIC-based model:", mae_aic_nbtyc_model))
+print(paste("MAE for BIC-based model:", mae_bic_nbtyc_model))
+
+
+#Red cards
+
+predictions_aic <- predict(stepwise_model_ptrc, newdata = period2rc_data, type = "response")
+predictions_bic <- predict(stepwise_model_bic, newdata = period2rc_data, type = "response")
+
+rmse_aic <- sqrt(mean((period2rc_data$total_rc - predictions_aic)^2))
+rmse_bic <- sqrt(mean((period2rc_data$total_rc - predictions_bic)^2))
+
+# Calculate MAE for both models
+mae_aic <- mean(abs(period2rc_data$total_rc - predictions_aic))
+mae_bic <- mean(abs(period2rc_data$total_rc - predictions_bic))
+
+print(paste("RMSE for AIC-based model:", rmse_aic))
+print(paste("RMSE for BIC-based model:", rmse_bic))
+
+print(paste("MAE for AIC-based model:", mae_aic))
+print(paste("MAE for p-value-based model:", mae_bic))
+
+
+predictions_aic_nbtrc_model <- predict(stepwise_nbtrc_model, newdata = period2rc_data, type = "response")
+predictions_bic_nbtrc_model <- predict(stepwise_nbtrc_model_bic, newdata = period2rc_data, type = "response")
+
+rmse_nbtrc_model_aic <- sqrt(mean((period2rc_data$total_rc - predictions_aic)^2))
+rmse_nbtrc_model_bic <- sqrt(mean((period2rc_data$total_rc - predictions_bic)^2))
+
+# Calculate MAE for both models
+mae_aic_nbtrc_model <- mean(abs(period2rc_data$total_rc - predictions_aic))
+mae_bic_nbtrc_model <- mean(abs(period2rc_data$total_rc - predictions_bic))
+
+print(paste("RMSE for AIC-based model:", rmse_nbtrc_model_aic))
+print(paste("RMSE for BIC-based model:", rmse_nbtrc_model_bic))
+print(paste("MAE for AIC-based model:", mae_aic_nbtrc_model))
+print(paste("MAE for p-value-based model:", mae_bic_nbtrc_model))
+
+```
+
+
