@@ -1,0 +1,239 @@
+---
+title: "Predicting Yellow and Red Cards"
+author: "22130975"
+output: 
+  pdf_document:
+    latex_engine: pdflatex
+    keep_tex: true  
+    template: null  
+bibliography: library.bib
+csl: apa.csl
+params:
+  data: Data (variables to use).xlsx
+---
+
+\newpage  
+
+# Abstract
+
+\newpage
+\tableofcontents
+
+\newpage  
+\listoffigures
+
+\newpage  
+\listoftables
+
+\newpage  
+
+# CHAPTER ONE INTRODUCTION
+
+## 1.1 Background of Study
+
+Football, known as soccer globally, has entrenched itself as one of the world's most beloved sports, captivating millions of fans and driving substantial revenue. In today's football landscape, the dynamics extend far beyond physical prowess and skill, encompassing intricate patterns of player behavior and interactions. Within this multifaceted context, a significant element is the issuance of yellow and red cards by match officials to penalize infractions and uphold the game's integrity. The ability to anticipate when and why such disciplinary actions might be taken holds paramount importance for teams, players, and fans. This paper delves into the domain of football analytics, utilizing advanced predictive modeling techniques to forecast occurrences of yellow and red card issuance during matches.
+
+Modern football involves a tapestry of factors, ranging from player skills and strategic plays to match conditions and referee decisions. Among these factors, the disciplinary facet of the game, including the issuance of yellow and red cards, emerges as a pivotal element influencing the course and outcome of a match. Unraveling the patterns and predictors behind card issuance offers valuable insights into the intricate dynamics of the game, player conduct, and referee decision-making processes. This study aims to harness the power of data science methodologies to predict the likelihood of yellow and red card issuance in football matches.
+
+In the realm of football, yellow and red cards serve as essential disciplinary measures used by referees to regulate player behavior and uphold the game's fairness. A yellow card acts as a caution, signaling that a player's actions are undesirable without immediately necessitating expulsion. Conversely, a red card mandates a player's removal from the field, often due to severe misconduct or the accumulation of two yellow cards.
+
+The implications of card allocations ripple beyond individual players and teams, exerting profound influences on the overall match dynamics. A team handicapped by a red card-induced numerical disadvantage faces altered prospects for success. Additionally, the accumulation of yellow cards can lead to player suspensions, subsequently impacting team strategies for upcoming matches.
+
+## 1.2 Significance and Research Objectives
+
+This research carries significance not solely within sports analysis, but it also transcends to broader discussions regarding data-driven decision-making. By delving into football analytics and constructing predictive models for card issuance, this study contributes to the evolving arena of sports analytics literature. Furthermore, it serves as a testament to the transformative power of data-driven insights in shaping competitive environments.
+
+It's noteworthy to incorporate the impact of the COVID-19 pandemic on football dynamics. The dataset used in this research extends until 2021, capturing a period when the pandemic disrupted normal operations. A distinctive consequence was the suspension of matches and altered attendance dynamics. Beginning in mid-June, attendance figures dwindled to zero, reflecting the pandemic's far-reaching implications on football's landscape.
+
+The research aims to achieve the following objectives:
+
+1. Construct accurate predictive models for forecasting yellow and red card issuance in football matches.
+2. Analyze historical match data, encompassing player statistics, team dynamics, match context, and referee tendencies, to decipher the factors influencing card allocations.
+3. Offer insights into the interplay of player behavior, referee decision-making, and game dynamics through data-driven methodologies.
+
+Subsequent chapters will expound on the literature review, data preprocessing, feature engineering, methodology, results, and the conclusion of this research endeavor.
+
+\newpage  
+
+# CHAPTER TWO LITERATURE REVIEW
+
+This chapter provides a summary of the relevant studies, methodologies, and literature that are employed in the following chapters.
+
+## 2.1 Related Studies on Football Data
+
+A previous paper focused on modeling the in-play football betting market by applying financial mathematical concepts and machine learning techniques [@Divos2020]. It aimed to value and manage risks of in-play football bets, utilizing high-frequency data sets and the direct link between game fundamentals and betting market outcomes. The paper introduced the application of financial derivatives' results, such as risk-neutral measures and arbitrage-freeness, to in-play football betting through a Poisson process-based model analogous to the Black-Scholes model. It also proposes a Local Intensity model to address the implied intensity smile observed in football betting. The paper presents a Microscopic Model that incorporates variables like ball position and team possession, arriving at a simplified model with predictive capabilities for short time intervals. Additionally, a First Half Indicators Model is introduced, utilizing machine learning to predict second-half goal intensities based on first-half indicators. The study finds that the Microscopic Model outperforms the First Half Indicators Model for short delays, due to the relevance of initial ball position and team possession within the first 30 seconds.
+
+@Decroos2019 set out to redefine the assessment of player contributions in soccer by going beyond traditional goal-based metrics. Their objective was to emphasize the significance of various player actions that influence match outcomes. Employing a data-driven approach, they meticulously collected and analyzed player movement data, tracking actions such as passes, tackles, and positioning. The study aimed to create a comprehensive framework for valuing these actions and predicting their impact on match dynamics. Through advanced predictive modeling techniques, the researchers sought to elucidate the nuanced ways in which players contribute to the ebb and flow of a game beyond scoring goals. Their findings revealed that accounting for a wider array of player actions enhances the accuracy of predicting match outcomes and offers a more holistic understanding of player influence.
+
+@Pena2012 undertook an investigation into the intricate factors influencing the issuance of yellow and red cards in football matches. Their primary objective was to uncover potential biases or discriminatory practices in referee decisions. Employing a rigorous statistical analysis, the researchers examined a large dataset of matches, focusing on the relationship between player behaviors, match situations, and card allocations. Through a comprehensive examination of these variables, the study aimed to discern patterns that shed light on the referees' decision-making process. The findings of their research highlighted that certain player profiles, along with the stage of the match and the overall context, significantly influenced the likelihood of receiving a red card. This illuminated the presence of implicit biases in card issuance, drawing attention to the complexities of referee judgment and its potential impact on match outcomes.
+
+@Kovalchik2016 contributed to the burgeoning field of predictive analytics in football by investigating the factors associated with yellow card accumulation. The primary objective of their research was to identify specific risk factors that lead to players receiving yellow cards. Leveraging player movement data from matches, the researchers utilized machine learning techniques to uncover underlying patterns. By training predictive models on historical data, they aimed to pinpoint the combination of player actions, positioning, and match situations that contribute to disciplinary actions. The results of their study revealed key predictors that could forecast instances of yellow card issuance. This pioneering research showcased the potential of advanced analytics in anticipating player behavior and provided a foundation for further explorations into predicting disciplinary outcomes.
+
+@Clarks2019 embarked on an exploration of the integration of data science methodologies in sports analytics, specifically within the context of football. Their objective was to underscore the transformative impact of data analytics on various aspects of the sport. Through a comprehensive literature review and analysis of existing research, the study aimed to elucidate the range of applications enabled by data-driven insights. From enhancing player performance analysis to refining strategic decision-making, the researchers highlighted the multifaceted ways in which data science contributes to modern sports practices. Their findings underscored the growing significance of data analytics in unlocking hidden patterns, optimizing training regimes, and shaping the trajectory of competitive sports.
+
+@Borland2020 delved into the unprecedented impact of the COVID-19 pandemic on the dynamics of football matches, particularly the absence of fan attendance. Their objective was to examine the ramifications of playing in empty stadiums and the subsequent alteration in the atmosphere of matches. Through a combination of qualitative and quantitative analysis, the researchers assessed changes in team dynamics, player behavior, and overall match environment. By comparing pre-pandemic matches with those played during the pandemic, they aimed to capture the qualitative and quantitative shifts in game dynamics. The findings of their study revealed a notable shift in the emotional and psychological dynamics of matches due to the lack of fan engagement. This demonstrated the intricate connection between fan presence and match outcomes, underlining the crucial role of spectator influence in the football ecosystem.
+
+@Fernandez2021 delved into the economic implications of the COVID-19 pandemic on the market for football players. Their primary objective was to understand how the disruptions caused by the pandemic affected player transfers, contract negotiations, and the overall football market. Through comprehensive data analysis and economic modeling, the researchers examined shifts in player valuations, market activity, and financial trends. By analyzing transfer data, contract extensions, and market dynamics during the pandemic, they aimed to provide insights into the impact on player movement and financial decisions. The findings of their research highlighted the altered landscape of player valuations and the subsequent adjustments in market transactions. This demonstrated the far-reaching consequences of the pandemic on football's financial ecosystem, emphasizing its complex interplay with on-field dynamics.
+
+@Karlis2003 aimed to extend the application of Poisson regression models to the analysis of sports data by introducing bivariate Poisson models. Their primary objective was to develop a methodology for modeling the joint distribution of goals scored by two competing teams in a match, incorporating dependencies between the teams' scoring behaviors. Through this approach, they sought to enhance the predictive accuracy of goal outcomes and provide deeper insights into the dynamics of sports events. The researchers collected historical football match data, including goals scored by both teams, and utilized the bivariate Poisson models to capture the goal-scoring interactions. Their findings indicated that the bivariate Poisson models outperformed traditional Poisson models by accounting for the interdependence between teams' goal-scoring behaviors. This research demonstrated the efficacy of extending Poisson regression to better capture the complexities of sports events and improve predictive accuracy.
+
+## 2.2 Related Studies on Modelling Football Data
+
+@Dixon1997 focused on modeling association football scores and exploring inefficiencies in the football betting market using the Poisson regression framework. The researchers' objective was to develop a statistical model that could predict the distribution of goals scored by teams in football matches. They employed a Poisson regression approach to model the number of goals scored by each team based on historical match data. By incorporating various covariates such as team strength, home advantage, and opposition quality, they aimed to improve the accuracy of score predictions. The findings of their study revealed that the Poisson regression model provided a solid foundation for predicting match outcomes and identifying potential discrepancies in the football betting market. This research highlighted the significance of statistical modeling in understanding goal-scoring patterns and uncovering market inefficiencies in sports betting.
+
+@Mohan2017 directed their research toward modeling the number of goals scored by a single team in a football match using negative binomial regression. Their primary objective was to develop a methodology that could capture the overdispersion often present in goal-scoring data. By incorporating team-specific covariates such as offensive and defensive abilities, they aimed to provide a robust model for predicting team goal outcomes. The researchers collected data from historical football matches and employed negative binomial regression to account for the variance in goal-scoring rates. Their findings indicated that the negative binomial model effectively addressed overdispersion and yielded more accurate predictions compared to traditional Poisson models. This research showcased the relevance of negative binomial regression in accounting for the variability inherent in goal-scoring data, enhancing the precision of match outcome predictions.
+
+\newpage  
+
+# CHAPTER THREE METHODOLOGY
+
+## 3.1 Data 
+
+This section provides a comprehensive overview of the variables present in the data set used for predicting yellow and red cards in football matches. The data set encompasses a diverse range of factors that contribute to the number of yellow and red cards.
+
+The data set used in this study is obtained by Smartodds, a private consultancy that provides services for professional gamblers. It comprises a comprehensive collection of football matches from multiple European leagues across various seasons, countries, and competition levels. Each data point is a unique football match, capturing a wide range of attributes that offer insights into match dynamics, disciplinary actions, and contextual factors. These data contain 27255 observations from August 2014 until December 2021. The data set includes the following variables (the data type is checked using the glimpse() function in R):
+
+Table: Variable Description 
+
+| Column Name (Data Type) | Description |
+|----------|----------|
+| season (character)   | Represents the time frame during which the football match took place. It is a categorical variable indicating the specific season in which the match occurred   |
+| country (character)   | Designates the geographical location of each match, identifying the country where the football league operates. This categorical variable helps contextualize the matches within their respective regions.   |
+| competition_level (double)   | Classifies matches based on the level of competition they belong to, such as top-tier leagues or lower divisions. This categorical variable enables the examination of disciplinary trends across various competitive environments.   |
+| kick_off_datetime (date and time)   | Provides precise temporal information for each match   |
+| referee (character)   | Records the name of the referee overseeing each match.   |
+| sup_implied, tg_implied (double)   | Provide implied odds from the betting market for match outcomes and total goals based on the available Asian handicap   |
+| team1_yc, team2_yc, team1_rc, team2_rc (double)   | Quantify the number of yellow and red cards received by each team.   |
+| attendance_value (double)   | Quantifies the number of spectators present during a match.   |
+
+Asian handicap is a betting term that originates in Asia and is primarily applied to football [@Isaiah2023]. A handicap indicates that one team effectively leads the other. Due to Asian handicaps, there are only two outcomes that can occur in a game as it eliminate the chance of a draw. The favoured team that is at a disadvantage is denoted with a minus sign (-) while a plus sign (+) is used to indicate the handicap advantage enjoyed by the underdog team.
+
+## 3.2 Poisson Regression
+
+Poisson regression is a statistical method used to model count data, such as the number of goals scored in a football match or the number of yellow cards received by players. The Poisson distribution is commonly employed to capture the probability of rare events occurring in a fixed interval. In the context of football analytics, Poisson regression models can be used to predict the frequency of certain discrete events, providing insights into match dynamics.
+
+The general form of the Poisson regression model is given by:
+$$
+\log(\lambda_i) = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + \ldots + \beta_p x_{pi}
+$$
+Where:
+- \( \lambda_i \): The expected count of the event for observation \( i \).
+- \( x_{ji} \): The value of predictor \( j \) for observation \( i \).
+- \( \beta_j \): The coefficient associated with predictor \( j \).
+- \( p \): The number of predictors in the model.
+
+The log-link function ensures that the predicted values remain positive. Poisson regression assumes that the mean and variance of the response variable are equal.
+
+This modeling approach has been applied successfully in football analytics. For instance, @Karlis2003 analyzed sports data using bivariate Poisson models to predict joint goal distributions. Additionally, @Dixon1997 utilized Poisson regression to model association football scores and identify inefficiencies in the football betting market.
+
+Negative binomial regression is an extension of the Poisson regression model that accounts for overdispersion, which occurs when the variance of the response variable is greater than its mean. Overdispersion is common in count data, where the assumption of equal mean and variance may not hold. Negative binomial regression is particularly useful when dealing with rare events or data with excessive variation.
+
+The negative binomial regression model introduces a dispersion parameter (θ) to capture the extra variability. The model equation is:
+\newpage
+
+# CHAPTER FOUR DATA EXPLORATION
+
+## 4.1 Data Quality Assessment
+
+This chapter provides a thorough investigation of the data quality. Any empirical investigation must consider data quality since the correctness and completeness of the underlying data are crucial to the validity and dependability of research conclusions. This chapter delves into the methods used to assess the data set for duplicates and missing values. 
+
+### 4.1.1 Duplicate Data Detection
+
+Prior to beginning any research, it is crucial to guarantee the data set's integrity by locating and removing any potential duplicate items. Duplicate data can seriously reduce the accuracy of results, skewing conclusions and causing erroneous decisions. The analysis revealed that the data set under investigation was free from any duplicate records.
+
+### 4.1.2 Missing Data Analysis
+
+Another serious issue that has the potential to skew the results of statistical analysis is missing data. Inaccurate or incomplete data might provide biased findings and false conclusions. The data set's character and numeric variables were meticulously examined for missing values in order to remedy this issue. Notably, the numeric columns of the variables "sup_implied" and "tg_implied" consistently showed six missing values for each of them. Additionally, the character variable "referee" showed 359 instances of significant missing values. Identification of these missing values is a crucial first step in the development of the imputation techniques that will be used in later chapters to maintain the completeness of the data set and the accuracy of the analysis.
+
+The results of the data quality assessment show how meticulously the research results were preserved as credible. The data set's originality is confirmed by the lack of duplicate entries, while the detection of missing values provides the opportunity for informed imputation techniques. By proving the data set's dependability, this chapter establishes the foundation for later investigations.
+
+On top of this foundation, we will undertake advanced modelling approaches, inferential statistics, and exploratory data analysis in the chapters that follow. We hope to derive valuable insights from these studies that further knowledge of the research topic and its implications.
+
+## 4.2 Data Transformation and Imputation
+
+The data set underwent transformation and imputation procedures after being thoroughly evaluated for data quality in order to improve its analytical usefulness. The processes taken to reconstruct the data and deal with missing values are described in this chapter, ensuring that the subsequent analyses are comprehensive and correct.
+
+### 4.2.1 Data Transformation
+
+The original column "kick_off_datetime" was divided into the two separate columns "kick_off_date" and "kick_off_time" to increase the dataset's level of granularity. This division makes it possible to examine match scheduling in greater detail. Further classification of the "kick_off_time" column allowed matches to be labelled as occurring in the afternoon (1) or the evening (2) if they occur between 4pm and 10pm, respectively. This subtle categorization captures the temporal fluctuations in match results, which helps to provide a more accurate study of match dynamics during the course of the day.
+
+### 4.2.2 Missing Data Imputation
+
+For the analysis to remain accurate, missing data must be filled in. The analysis of the "referee" column's missing data showed that matches in Germany had the highest percentage of missing values. In order to replace the missing values in German matches, the second most frequent referee was employed in a mode-based technique to impute the missing values. This method recognises the uniqueness of the missing data pattern in the context of several nations.
+
+```{r figure1, fig.cap="Missing Referee by Country", echo=FALSE, warning=FALSE}
+library(readxl)
+dataNA <- read_excel("Data (variables to use) - NA.xlsx")
+missing_by_country <- table(dataNA$country)
+barplot(missing_by_country,
+        main = "Missing Values by Country",
+        xlab = "Country",
+        ylab = "Missing Value Count",
+        col = "skyblue",
+        border = "black",
+        las = 2,  
+        names.arg = names(missing_by_country))
+
+```
+
+Imputation for numerical variables like "sup_implied" and "tg_implied" was done using the mean of each relevant column. Based on the characteristics of these variables and their eligibility for imputation through measures of central tendency, it was decided to impute with means.
+
+### 4.2.3 Combined Variables
+
+The columns "team1_yc" and "team2_yc" were combined into a single "total_yc" column to capture the total amount of yellow cards that both teams have been issued in a match in the search for more illuminating variables. Similar to this, the data from the "team1_rc" and "team2_rc" columns was merged to create the "total_rc" column, which tallied the red card statistics for both teams. In addition to streamlining the data set, these changes produce variables that provide a more thorough summary of match-related sanctions.
+
+The dataset has been improved by these data transformations and imputations to a state that is suitable for insightful analyses. These improvements will be utilised in the following chapters to explore exploratory data analysis, inferential statistics, and predictive modelling. This chapter ensures that the dataset is ready for robust analysis by resolving missing data and adding new variables, thereby enhancing the depth and rigour of the research findings.
+
+
+
+12. Look at summary statistic of distribution of referees based on number of matches
+14. Check "attendance_value" by year and month. Can be seen that starting April 2020, attendance is 0. Most likely because of covid
+15. Split the data into 3. 70% for training, 30% for validation. Anything after April 2020 is a separate dataset for covid.
+16. Train dataset. Results:
+
+The summary of the negative binomial regression model for the training data indicates the estimated coefficients for each predictor variable. Here's a summarized interpretation of the coefficients:
+
+Intercept (Baseline):
+
+The baseline log-odds of the response variable (e.g., total yellow cards) when all other predictor variables are zero.
+Highly significant (p < 2e-16), indicating that it's important in predicting the response.
+Country Effects:
+
+For each country (France, Germany, Italy, Spain) compared to the reference category:
+Positive coefficients indicate an increase in the log-odds of the response relative to the reference country (e.g., England).
+Highly significant (p < 0.001), suggesting that country has a significant impact.
+Competition Level (L2):
+
+Moderately significant (p = 0.05351), indicating that the L2 competition level has a marginal effect on the response.
+sup_implied and tg_implied:
+
+Negative coefficients (p < 2e-16), implying that higher values of these predictors are associated with lower log-odds of the response.
+attendance_value:
+
+Positive coefficient (p = 4.74e-05), indicating that higher attendance is associated with a small increase in the log-odds of the response.
+kick_off_timecatevening:
+
+Negative coefficient (p = 3.92e-06), suggesting that matches played in the evening are associated with lower log-odds of the response compared to matches played in the afternoon.
+total_rc and matches:
+
+Positive coefficients (p < 2e-16), indicating that higher values of these predictors are associated with higher log-odds of the response.
+referee_groupLow:
+
+Positive coefficient (p = 0.03519), suggesting that matches refereed by referees with lower match counts are associated with slightly higher log-odds of the response.
+Overall, most of the predictor variables have significant associations with the response variable. The coefficients give you insights into the direction and magnitude of the impact of each predictor on the response variable. The "Pr(>|z|)" values indicate the statistical significance of each coefficient, with smaller values suggesting stronger evidence against the null hypothesis (no effect).
+
+### 3.2.2 Handling data with missing values
+
+The number of missing values in variable referee is checked by country. It appears that Germany has the highest number of missing values. Based on the mode of the referees by country, the highest number frequency of referee in Germany is NA. While other countries are imputed with their modes. Germany is imputed with the second mode which is Felix Brych. 
+
+For variables sup_implied and tg_implied, mean imputation is used to combate the missing values.
+
+
+
+As variance>mean, appears to have overdispersion. Consider Negative binomial regression 
+
+\newpage  
+
+# References
+
+

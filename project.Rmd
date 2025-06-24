@@ -1,0 +1,47 @@
+---
+title: "Project"
+output: html_document
+date: "2023-07-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+install.packages("tidyverse")
+install.packages("dplyr")
+library("dplyr")
+library("tidyverse")
+
+
+```{r pressure, echo=FALSE}
+Data <- read.csv("C:/Users/60196/Desktop/Project/Dataset/Data.csv")
+glimpse(Data)
+Data$fixture_id <- as.character(Data$fixture_id)
+Data$season_start_date <- as.Date(Data$season_start_date, format = "%m/%d/%Y")
+Data$season_end_date <- as.Date(Data$season_end_date, format = "%m/%d/%Y")
+
+# Check for duplicates
+if (any(duplicated(Data))) {
+  print("Duplicates found!")
+} else {
+  print("No duplicates found.")
+}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

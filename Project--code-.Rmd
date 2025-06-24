@@ -1,0 +1,276 @@
+---
+title: "Predicting Yellow and Red Cards"
+author: "Nur Amira binti Johari"
+output: 
+  pdf_document:
+    latex_engine: pdflatex
+params:
+  data: "Data (variables to use).xlsx"
+---
+  
+```{r setup, echo=FALSE, warning=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(knitr)
+library(kableExtra)
+library(randomForest)
+library(MASS)
+
+#import data
+dataset <- read_excel(params$data)
+
+# see details of dataset
+glimpse(dataset)
+
+# Check for duplicates
+anyDuplicated(dataset)
+
+# Check missing values for numeric columns
+colSums(is.na(dataset[sapply(dataset, is.numeric)]))
+
+# Check missing values for character variables with "NA" as missing value marker
+apply(dataset, 2, function(col) sum(col == "NA", na.rm = TRUE))
+
+# Convert the kick_off_datetime variable to a POSIXct object 
+dataset$kick_off_datetime <- ymd_hms(dataset$kick_off_datetime)
+
+# Extract the date component
+dataset$kick_off_date <- as.Date(dataset$kick_off_datetime)
+
+# Remove the kick_off_datetime column
+dataset <- subset(dataset, select = -c(kick_off_datetime))
+
+# analyse data with NA
+dataNA <- read_excel("Data (variables to use) - NA.xlsx")
+
+# Count the number of missing values for each country in the "dataNA" dataset
+missing_by_country <- table(dataNA$country)
+
+# Display the result
+print(missing_by_country)
+plot(missing_by_country)
+
+# Calculate the mode for 'referee' for each country
+mode_referee_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(mode_referee = names(sort(table(referee), decreasing = TRUE))[1])
+print(mode_referee_by_country)
+
+# Merge the mode_referee_by_country back to the original data
+dataset <- left_join(dataset, mode_referee_by_country, by = "country")
+
+# Replace missing 'referee' values (represented as "NA") with the mode for each respective country
+dataset$referee[dataset$referee == "NA"] <- dataset$mode_referee[dataset$referee == "NA"]
+
+# Calculate the second mode for 'referee' for the country where the mode is NA ("Germany")
+second_mode_referee <- dataset %>%
+  filter(country == "Germany" & referee != "NA") %>%
+  count(referee) %>%
+  arrange(desc(n)) %>%
+  slice(2) %>%
+  pull(referee)
+print(second_mode_referee)
+
+# Replace missing 'referee' values (represented as "NA") with the second mode for the country where the mode is NA ("Germany")
+dataset$referee[dataset$country == "Germany" & dataset$referee == "NA"] <- second_mode_referee
+
+# Remove the temporary 'mode_referee' column
+dataset$mode_referee <- NULL
+
+# Check the number of missing values for 'sup_implied' and 'tg_implied'
+sum(is.na(dataset$sup_implied))
+sum(is.na(dataset$tg_implied))
+
+# Calculate the mean of 'sup_implied' and 'tg_implied'
+mean_sup_implied <- mean(dataset$sup_implied, na.rm = TRUE)
+mean_tg_implied <- mean(dataset$tg_implied, na.rm = TRUE)
+
+# Impute missing 'sup_implied' and 'tg_implied' values with the mean
+dataset$sup_implied[is.na(dataset$sup_implied)] <- mean_sup_implied
+dataset$tg_implied[is.na(dataset$tg_implied)] <- mean_tg_implied
+
+# Combine team1 and team2, yc and rc
+dataset$total_yc <- dataset$team1_yc + dataset$team2_yc
+dataset$total_rc <- dataset$team1_rc + dataset$team2_rc
+
+# Remove columns
+dataset <- subset(dataset, select = -c(team1_yc, team1_rc, team2_yc, team2_rc))
+
+# Summary statistic of distribution of referees
+referee_summary <- dataset %>%
+  group_by(referee) %>%
+  summarise(matches = n()) %>%
+  summarise(mean_matches = mean(matches),
+            median_matches = median(matches),
+            sd_matches = sd(matches),
+            min_matches = min(matches),
+            max_matches = max(matches))
+
+
+
+
+
+
+
+# Remove columns
+dataset <- subset(dataset, select = -c(team1_name, team2_name, season))
+
+
+
+
+
+
+
+
+encoded_data <- dataset 
+# Assuming your dataset is named 'sports_data'
+encoded_data$kick_off_timecat <- ifelse(encoded_data$kick_off_timecat == 1, "afternoon", "evening")
+
+encoded_data$competition_level <- ifelse(encoded_data$competition_level == 1, "L1", "L2")
+
+
+
+
+
+
+# Calculate referee match counts
+referee_counts <- dataset %>%
+  group_by(referee) %>%
+  summarise(matches = n())
+
+# Define threshold for low match counts
+low_match_threshold <- 70  # Adjust this threshold as needed
+
+# Create referee groups based on match counts
+referee_counts$referee_group <- ifelse(referee_counts$matches < low_match_threshold, "Low", "High")
+
+# Merge with original data
+merged_data <- left_join(encoded_data, referee_counts, by = "referee")
+
+# Remove referee column
+merged_data <- subset(merged_data, select = -c(referee))
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+
+merged_data$kick_off_date <- as.Date(merged_data$kick_off_date)
+
+merged_data$kick_off_year <- format(merged_data$kick_off_date, "%Y")
+merged_data$kick_off_month <- format(merged_data$kick_off_date, "%m")
+
+library(dplyr)
+
+attendance_by_month_year <- merged_data %>%
+  group_by(kick_off_year, kick_off_month) %>%
+  summarise(total_attendance = sum(attendance_value))
+
+library(ggplot2)
+
+ggplot(attendance_by_month_year, aes(x = kick_off_month, y = total_attendance, fill = kick_off_year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Attendance by Month and Year",
+       x = "Month",
+       y = "Total Attendance",
+       fill = "Year") +
+  theme_minimal()
+
+
+
+
+
+
+
+merged_data$kick_off_date <- as.Date(merged_data$kick_off_date)
+merged_data$period <- ifelse(merged_data$kick_off_date <= as.Date("2020-03-31"), "Period 1", "Period 2")
+
+period1_data <- merged_data %>%
+  filter(kick_off_date <= as.Date("2020-03-31"))
+
+library(caret)
+
+set.seed(123)  # For reproducibility
+train_indices <- createDataPartition(period1_data$attendance_value, p = 0.7, list = FALSE)
+training_data <- period1_data[train_indices, ]
+validation_data <- period1_data[-train_indices, ]
+
+period2_data <- merged_data %>%
+  filter(kick_off_date > as.Date("2020-03-31"))
+
+
+
+
+training_data <- subset(training_data, select = -c(kick_off_date,kick_off_month,kick_off_year,period))
+validation_data <- subset(validation_data, select = -c(kick_off_date,kick_off_month,kick_off_year,period))
+period2_data <- subset(period2_data, select = -c(kick_off_date,kick_off_month,kick_off_year,period))
+
+
+
+
+library(MASS)  # For negative binomial regression
+
+formula <- as.formula(paste("total_yc", "~ ."))
+
+
+nb_model <- glm.nb(formula, data = training_data)
+
+summary(nb_model)
+
+# Calculate AIC and BIC for the negative binomial regression model
+aic <- AIC(nb_model)
+bic <- BIC(nb_model)
+
+cat("AIC:", aic, "\n")
+cat("BIC:", bic, "\n")
+
+# Fit Poisson regression model
+poisson_formula <- as.formula(paste("total_yc", "~. "))
+poisson_model <- glm(poisson_formula, data = training_data, family = "poisson")
+
+# Print model summary
+summary(poisson_model)
+
+aic_p <- AIC(poisson_model)
+bic_p <- BIC(poisson_model)
+
+cat("AIC:", aic_p, "\n")
+cat("BIC:", bic_p, "\n")
+
+
+
+
+# Predict on validation data
+validation_data$predicted_values <- predict(nb_model, newdata = validation_data, type = "response")
+
+# Evaluate model performance
+actual_values <- validation_data$total_yc  
+predicted_values <- validation_data$predicted_values
+
+# Calculate Mean Squared Error (MSE)
+mse <- mean((actual_values - predicted_values)^2)
+cat("Mean Squared Error:", mse, "\n")
+
+# Calculate Root Mean Squared Error (RMSE)
+rmse <- sqrt(mse)
+cat("Root Mean Squared Error:", rmse, "\n")
+
+# Plot actual vs. predicted values
+library(ggplot2)
+ggplot(data = validation_data, aes(x = actual_values, y = predicted_values)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(title = "Actual vs. Predicted Values",
+       x = "Actual Values",
+       y = "Predicted Values") +
+  theme_minimal()
+
+
+
+```
+

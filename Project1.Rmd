@@ -1,0 +1,280 @@
+---
+title: "Predicting Yellow and Red Cards"
+author: "Nur Amira binti Johari"
+output: 
+  html_document:
+    toc: true
+params:
+  data: "Data (variables to use).xlsx"
+---
+
+# CHAPTER ONE INTRODUCTION
+
+## 1.1 Background of Study
+The yellow card indicates that a player or team official has been officially cautioned. The offender's details, time and nature of the foul is recorded in a notebook known as booking. Although accidents do happen, the umpires are always present to ensure that misconduct does not go beyond the limits of fair play in football. Disrespect to opponents, aggressive play, dangerous and inappropriate celebrations can all result in a yellow card. A player or team official who has been warned may continue playing. However, the second yellow card results in expulsion (red card).
+[source](https://olympics.com/en/news/football-yellow-card-rules-history)
+Each yellow card is worth one booking, and each red card is worth two Bookings. Second yellow cards on a competitor are ignored, so the maximum bookings for a player is three. Any cards shown to non-competitors (such as teammates on the bench, competitors leaving the pitch, the manager, coach, or other staff) are not counted. Cards shown during the half-time break are counted towards the 2nd-half period Bookings markets. Any cards shown after the whistle that ends regulation time will not be counted towards the markets for that game.
+Bets are settled according to the score for the remainder of the period after the bet has been placed. Any scores prior to the bet being placed are ignored for resulting purposes.
+[source](https://blog.tipsterspro.com/soccer-rules-of-pinnacle/)
+
+![Image 1](Football_in_Bloomington,_Indiana,_1996.jpg)
+
+
+## 1.2 Problem Statement
+## 1.3 Research Questions
+## 1.4 Research Objectives
+1.
+2. To investigate the best model to predict yellow and red cards in a game of football
+3. To predict yellow and red cards in a game of football
+
+## 1.5 Scope and Limitations
+
+# CHAPTER TWO LITERATURE REVIEW
+
+## 2.1 Related Studies
+### 2.1.1 Influence of Red and Yellow cards on team performance in elite soccer
+
+All events were structured over a 5-minute period and analyzed using a general linear mixed model with a Poisson distribution, taking into account the presence of correlated data, where the dependent variable is expressed as a scoring rate. When the expelled player belongs to the away team, the impact of the red card is more or less maintained over time. Specifically, if a red card is drawn with 30 minutes remaining, the expected impact is 0.
+
+### 2.1.2 Regression Analysis for Prediction : Undderstandind the Process
+
+[Regression Analysis for Prediction: Understanding the Process](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2845248/#:~:text=Regression%20analysis%20is%20a%20statistical,linear%20combination%20of%20the%20predictors.)
+
+### 2.1.3 Factors Influencing the Penalty Cards in Soccer
+
+In order to investigate the factors that influence the decision to issue yellow and red cards in football competitions like the UEFA Champions League, the FIFA World Cup, and national leagues, researchers emploedy a compound Poisson distribution. The resulting model is used to analyse the results of the 2013–14 Spanish Football League, looking at both the partial and overall effects on the home and away teams. It has been demonstrated that a number of variables, including the guest team's victory, the game's goal differential, the total number of fouls committed, the home team's offensive play, whether or not the match is a derby, the time of day the game is played, the level of fair play, the referee's age, and whether or not the referee has international experience, may influence the number of cards. The approach presented in this research is straightforward and effective, offering a practical tool that may be used in a variety of sporting contexts.
+[Factors influencing the penalty cards in soccer](https://www.mendeley.com/catalogue/e8173b2b-71d5-391b-95c8-b1365517294f/)
+
+### 2.1.4 The influence of crowd noise and experience upon refereeing decisions in football
+
+It is well knowledge that home field advantage exists in sports. There is mounting evidence that this behaviour is significantly influenced by crowd noise. In order to determine how crowd noise affects refereeing decisions in association football (soccer), a quantitative study was conducted. It was also discussed whether there would be an imbalance in refereeing choices based on years of expertise. to find out if trained referees' evaluations of specific tackles and challenges captured on videotape are influenced by the presence or absence of crowd noise. It was determined how crowd noise and years of expertise affected referees' decisions using binary logistic regression. Referee judgements were significantly impacted by the presence of crowd noise. In comparison to those who watched the challenges in silence, those who heard background crowd noise made more erroneous decisions and gave the home team significantly fewer fouls (15.5%). Referees' judgements were biassed in favour of the host team due to the raucous crowd noise. It is proposed that the salient character of crowd noise, the potential employment of heuristic techniques, and the desire to minimise potential crowd discontent by ruling in favour of the home team all impact referees' judgements. 
+[The influence of crowd noise and experience upon refereeing decisions in football](https://www.mendeley.com/catalogue/515a54ad-7579-3362-99d7-e9443664999f/)
+
+## 2.2 Summary of Literature Review
+
+# CHAPTER THREE METHODOLOGY
+## 3.1 Data Description
+```{r, results='asis', echo=FALSE}
+library(kableExtra)
+
+description <- data.frame(
+  Column_Name = c('season','country', 'competition_level', 'kick_off_datetime', 'team1_name', 'team2_name', 'referee', 'sup_implied', 'tg_implied', 'team1_yc', 'team2_yc', 'team1_rc', 'team2_rc', 'attendance_value'),
+  Description = c('The season in which the fixture took place', 'The country in which the fixture took place', 'The level of competition', 'The date and time of the fixtures kickoff', 'The name of the first team participating in the fixture','The name of the second team participating in the fixture', 'The referee assigned to officiate the match', 'The expected home teams goal supremacy based on the available Asian handicap odds', 'The expected total number of goals in the match based on the available Asian handicap odds', 'The number of yellow cards received by team1', 'The number of yellow cards received by team2', 'The number of red cards received by team1', 'The number of red cards received by team2', 'The number of attendess at a match')
+)
+
+# Print the table with lines and spacing adjustments
+kable(description, format = "html", border = "solid", align = "c", col.names = c("Column Name", "Description")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+Asian handicap betting is a type of football wagering in which teams are given handicaps based on their performance so that a bet on a stronger team must win by a larger margin to be successful. 
+[source](https://en.wikipedia.org/wiki/Asian_handicap)
+
+Pinnacles
+
+where get data from, league, which one are categorical
+
+## 3.2 Data Pre-Processing
+### 3.2.1 Check dataset details, graphs, duplicates and missing values
+```{r setup, echo=FALSE, warning=FALSE}
+library(readxl)
+library(dplyr)
+library(tidyr)
+#import data
+dataset <- read_excel(params$data)
+
+#see details of dataset
+glimpse(dataset)
+
+# Check for duplicates
+paste("The number of duplicates in the data is", anyDuplicated(dataset))
+
+# Group by "country" and "team1_yc" and summarize the count
+summary_data <- dataset %>%
+  group_by(country, team1_yc) %>%
+  summarize(count = n())
+
+# Convert the data from long to wide format
+pivot_data <- pivot_wider(summary_data, 
+                          names_from = team1_yc, 
+                          values_from = count, 
+                          values_fill = 0)
+
+# Print the resulting pivot table
+print(pivot_data)
+
+# Load the required packages
+library(dplyr)
+library(ggplot2)
+
+# Group by "country" and summarize the total occurrences of team1_yc
+total_yc_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(total_team1_yc = sum(team1_yc, na.rm = TRUE))
+
+# Create a bar plot to visualize the total occurrences
+ggplot(total_yc_by_country, aes(x = country, y = total_team1_yc)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Total Team1 Yellow Cards by Country",
+       x = "Country",
+       y = "Total Team1 Yellow Cards")
+
+# Group by "country" and summarize the total occurrences of team2_yc
+total_yc2_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(total_team2_yc = sum(team2_yc, na.rm = TRUE))
+
+# Create a bar plot to visualize the total occurrences
+ggplot(total_yc2_by_country, aes(x = country, y = total_team2_yc)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Total Team2 Yellow Cards by Country",
+       x = "Country",
+       y = "Total Team2 Yellow Cards")
+
+# Group by "country" and summarize the total occurrences of team1_rc
+total_rc1_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(total_team1_rc = sum(team1_rc, na.rm = TRUE))
+
+# Create a bar plot to visualize the total occurrences
+ggplot(total_rc1_by_country, aes(x = country, y = total_team1_rc)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Total Team1 Red Cards by Country",
+       x = "Country",
+       y = "Total Team1 Red Cards")
+
+# Group by "country" and summarize the total occurrences of team2_rc
+total_rc2_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(total_team2_rc = sum(team2_rc, na.rm = TRUE))
+
+# Create a bar plot to visualize the total occurrences
+ggplot(total_rc2_by_country, aes(x = country, y = total_team2_rc)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Total Team2 Red Cards by Country",
+       x = "Country",
+       y = "Total Team2 Red Cards")
+```
+explain what team1 and team2
+
+```{r echo=FALSE, warning=FALSE}
+# Check for missing values in the entire dataset
+library(knitr)
+library(kableExtra)
+
+# Check missing values for numeric columns
+colSums(is.na(dataset[sapply(dataset, is.numeric)]))
+
+# Check missing values for character variables with "NA" as missing value marker
+apply(dataset, 2, function(col) sum(col == "NA", na.rm = TRUE))
+```
+
+Variables sup_implied and tg_implied has 6 missing values in each columns. referee column has 359 rows of missing values.
+
+### 3.2.2 Handling data with missing values
+```{r, echo=FALSE}
+library(readxl)
+#analyse data with NA
+dataNA <- read_excel("Data (variables to use) - NA.xlsx")
+
+# Count the number of missing values for each country in the "dataNA" dataset
+missing_by_country <- table(dataNA$country)
+
+# Display the result
+print(missing_by_country)
+plot(missing_by_country)
+
+# Load the 'dplyr' package for data manipulation
+library(dplyr)
+
+# Calculate the mode for 'referee' for each country
+mode_referee_by_country <- dataset %>%
+  group_by(country) %>%
+  summarize(mode_referee = names(sort(table(referee), decreasing = TRUE))[1])
+print(mode_referee_by_country)
+
+# Merge the mode_referee_by_country back to the original data
+dataset_impute <- left_join(dataset, mode_referee_by_country, by = "country")
+
+# Replace missing 'referee' values (represented as "NA") with the mode for each respective country
+dataset_impute$referee[dataset_impute$referee == "NA"] <- dataset_impute$mode_referee[dataset_impute$referee == "NA"]
+
+# Calculate the second mode for 'referee' for the country where the mode is NA ("Germany")
+second_mode_referee <- dataset %>%
+  filter(country == "Germany" & referee != "NA") %>%
+  count(referee) %>%
+  arrange(desc(n)) %>%
+  slice(2) %>%
+  pull(referee)
+print(second_mode_referee)
+
+# Replace missing 'referee' values (represented as "NA") with the second mode for the country where the mode is NA ("Germany")
+dataset_impute$referee[dataset_impute$country == "Germany" & dataset_impute$referee == "NA"] <- second_mode_referee
+
+# Remove the temporary 'mode_referee' column
+dataset_impute$mode_referee <- NULL
+
+# Assuming your data is stored in a data frame named 'df'
+# Check the number of missing values for 'sup_implied' and 'tg_implied'
+sum(is.na(dataset_impute$sup_implied))
+sum(is.na(dataset_impute$tg_implied))
+
+# Calculate the mean of 'sup_implied' and 'tg_implied'
+mean_sup_implied <- mean(dataset_impute$sup_implied, na.rm = TRUE)
+mean_tg_implied <- mean(dataset_impute$tg_implied, na.rm = TRUE)
+
+# Impute missing 'sup_implied' and 'tg_implied' values with the mean
+dataset_impute$sup_implied[is.na(dataset_impute$sup_implied)] <- mean_sup_implied
+dataset_impute$tg_implied[is.na(dataset_impute$tg_implied)] <- mean_tg_implied
+
+```
+
+The number of missing values in variable referee is checked by country. It appears that Germany has the highest number of missing values. Based on the mode of the referees by country, the highest number frequency of referee in Germany is NA. While other countries are imputed with their modes. Germany is imputed with the second mode which is Felix Brych. 
+
+For variables sup_implied and tg_implied, mean imputation is used to combate the missing values.
+
+```{r}
+dataset_impute$combined_yc <- dataset_impute$team1_yc + dataset_impute$team2_yc
+
+hist(dataset_impute$combined_yc, main = "Histogram of Combined Yellow Cards")
+mean_yc <- mean(dataset_impute$combined_yc)
+var_yc <- var(dataset_impute$combined_yc)
+
+qqnorm(dataset_impute$combined_yc)
+qqline(dataset_impute$combined_yc)
+
+
+ks.test(dataset_impute$combined_yc, "ppois", lambda = mean_yc)
+
+var(dataset_impute$combined_yc)
+mean(dataset_impute$combined_yc)
+
+# Install and load the MASS package if not already installed
+# install.packages("MASS")
+library(MASS)
+
+# Assuming 'data' is your dataframe
+negative_binomial_model <- glm.nb(combined_yc ~ attendance_value, data = dataset_impute)
+summary(negative_binomial_model)
+
+```
+
+As variance>mean, appears to have overdispersion. Consider Negative binomial regression 
+
+# References
+
+Separate data into training and testing. Combine team1 and team2
+
+### Obsolete Codes
+
+observed_freq <- table(dataset_impute$combined_yc)
+Convert names to numeric values
+observed_values <- as.numeric(names(observed_freq))
+
+Calculate expected frequencies
+expected_freq <- dpois(observed_values, lambda = mean_yc) * sum(observed_freq)
+
+chisq_test <- chisq.test(observed_freq, p = expected_freq)
+
+expected_freq <- dpois(names(observed_freq), lambda = mean_yc) * sum(observed_freq)
+chisq_test <- chisq.test(observed_freq, p = expected_freq)
+
